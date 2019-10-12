@@ -11,16 +11,23 @@
 #define IPADDR "127.0.0.1"
 #define PORT 7437
 
-#define LOCALPREFIX "/local"
-#define TTSPREFIX "/local/tts"
+#define MUSICDIR "/home/jmyers/Desktop/songs/"
 
-int callback_play_testsounds (const struct _u_request * request, struct _u_response * response, void * user_data);
+#define MUSICYTDLROUTE "/local/music/ytdl"
+#define MUSICPLAYROUTE "/local/music/play"
+#define MUSICSTOPROUTE "/local/music/stop"
+
+#define TTSROUTE "/local/tts"
+
+int callback_ytdl_music (const struct _u_request * request, struct _u_response * response, void * user_data);
+int callback_play_music (const struct _u_request * request, struct _u_response * response, void * user_data);
+int callback_stop_music (const struct _u_request * request, struct _u_response * response, void * user_data);
+
 int callback_play_tts (const struct _u_request * request, struct _u_response * response, void * user_data);
+
 
 #define PORT 7437
 #define LOCALPREFIX "/local"
-
-int callback_play_testsounds (const struct _u_request * request, struct _u_response * response, void * user_data);
 
 /**
  * Main function
@@ -29,9 +36,9 @@ int main (int argc, char **argv) {
   
   // jansson integer type can vary
 #if JSON_INTEGER_IS_LONG_LONG
-  long long nb_sheep = 0;
+  long long nb_audiobot = 0;
 #else
-  long nb_sheep = 0;
+  long nb_audiobot = 0;
 #endif
   
   // Initialize the instance
@@ -54,8 +61,11 @@ int main (int argc, char **argv) {
   // Endpoint list declaration
   // The first 3 are webservices with a specific url
   // The last endpoint will be called for every GET call and will serve the static files
-  ulfius_add_endpoint_by_val(&instance, "POST", LOCALPREFIX, NULL, 1, &callback_play_testsounds, &nb_sheep);
-  ulfius_add_endpoint_by_val(&instance, "POST", TTSPREFIX, NULL, 1, &callback_play_tts, &nb_sheep);
+  ulfius_add_endpoint_by_val(&instance, "POST", MUSICPLAYROUTE, NULL, 1, &callback_play_music, &nb_audiobot);
+  ulfius_add_endpoint_by_val(&instance, "POST", MUSICSTOPROUTE, NULL, 1, &callback_stop_music, &nb_audiobot);
+  ulfius_add_endpoint_by_val(&instance, "POST", MUSICYTDLROUTE, NULL, 1, &callback_ytdl_music, &nb_audiobot);
+  
+  ulfius_add_endpoint_by_val(&instance, "POST", TTSROUTE, NULL, 1, &callback_play_tts, &nb_audiobot);
   
   // Start the framework
   if (ulfius_start_framework(&instance) == U_OK) {
@@ -77,27 +87,68 @@ int main (int argc, char **argv) {
 }
 
 int callback_play_tts (const struct _u_request * request, struct _u_response * response, void * user_data) {
-
-  system("espeak-ng \"Test\"");
-
-  /* json_body = json_object();
-  json_object_set_new(json_body, "nbsheep", json_integer(* nb_sheep));
-  ulfius_set_json_body_response(response, 200, json_body);
-  json_decref(json_nb_sheep);
-  json_decref(json_body); */
-  return U_CALLBACK_CONTINUE;
-}
-
-int callback_play_testsounds (const struct _u_request * request, struct _u_response * response, void * user_data) {
-
-  system("espeak-ng \"Test\"");
-  system("aplay /home/jmyers/Desktop/songs/jojopart3.wav");
   
-  /* json_body = json_object();
-  json_object_set_new(json_body, "nbsheep", json_integer(* nb_sheep));
-  ulfius_set_json_body_response(response, 200, json_body);
-  json_decref(json_nb_sheep);
-  json_decref(json_body); */
+  json_t * json_nb_audiobot = ulfius_get_json_body_request(request, NULL);
+
+  char * tts_param_message = json_string_value(json_object_get(json_nb_audiobot, "message"));
+  char * tts_param_pitch = json_string_value(json_object_get(json_nb_audiobot, "pitch"));
+  char * tts_param_vol = json_string_value(json_object_get(json_nb_audiobot, "volume"));
+  char * tts_param_speed = json_string_value(json_object_get(json_nb_audiobot, "speed"));
+
+  char buffer[512];
+  if(snprintf(buffer, sizeof(buffer), "espeak-ng -a %s -s %s -p %s \"%s\"", tts_param_vol, tts_param_speed, tts_param_pitch, tts_param_message)>=sizeof(buffer))
+  {
+    return U_CALLBACK_CONTINUE;
+  }
+  else
+  {
+    system(buffer);
+  }
+  
   return U_CALLBACK_CONTINUE;
 }
 
+int callback_play_music (const struct _u_request * request, struct _u_response * response, void * user_data) {
+
+  json_t * json_nb_audiobot = ulfius_get_json_body_request(request, NULL);
+
+  char * music_param_song = json_string_value(json_object_get(json_nb_audiobot, "song"));
+  
+  char buffer[256];
+  if(snprintf(buffer, sizeof(buffer), "cvlc --no-video --play-and-exit \"file://%s%s\"", MUSICDIR, music_param_song)>=sizeof(buffer))
+  {
+    return U_CALLBACK_CONTINUE;
+  }
+  else
+  {
+    system(buffer);
+  } 
+ 
+  return U_CALLBACK_CONTINUE;
+}
+
+int callback_stop_music (const struct _u_request * request, struct _u_response * response, void * user_data) {
+  system("killall vlc");
+
+  return U_CALLBACK_CONTINUE;
+}
+
+int callback_ytdl_music (const struct _u_request * request, struct _u_response * response, void * user_data) {
+
+  json_t * json_nb_audiobot = ulfius_get_json_body_request(request, NULL);
+
+  char * music_param_url = json_string_value(json_object_get(json_nb_audiobot, "url"));
+  char * music_param_name = json_string_value(json_object_get(json_nb_audiobot, "name"));
+  
+  char buffer[384];
+  if(snprintf(buffer, sizeof(buffer), "youtube-dl -o \"%s%s.flv\" \"%s\"", MUSICDIR, music_param_name, music_param_url)>=sizeof(buffer))
+  {
+    return U_CALLBACK_CONTINUE;
+  }
+  else
+  {
+    system(buffer);
+  } 
+ 
+  return U_CALLBACK_CONTINUE;
+}
