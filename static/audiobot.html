@@ -20,20 +20,20 @@
 
     <h3>Play Song</h3>
 
-    <button type="button">List Songs</button>
+    <button id="music_list_button" type="button">List Songs</button>
     <br>
     <br>
 
-    <select>
+    <select id="music_list_select">
 
     </select>
     <br>
     <br>
-    <button type="button">Play</button>
+    <button id="music_play_button" type="button">Play</button>
 
     <h3>Stop Song</h3>
 
-    <button type="button">Stop</button>
+    <button id="music_stop_button" type="button">Stop</button>
 
     
     <h3>Download from YouTube</h3>
@@ -47,7 +47,7 @@
 
     <br>
 
-    <button type="button">Download</button>
+    <button id="youtube_download_button" type="button">Download</button>
     
     <hr>  
       
@@ -72,12 +72,111 @@
     <input type="text" id="tts_message_speed" value="160">
 
     <br>
-    <button type="button">Say It</button>
+    <button id="tts_speak_button" type="button">Say It</button>
  
     <script>
 
       $(document).ready(function() {
+        $("#music_list_button").click(function(){
 
+          $.ajax({
+             url: '/local/music/list',
+             dataType: 'json',
+             type: 'post',
+             contentType: 'application/json',
+              success: function(data){
+  		var options = "";  
+                data.list.forEach(function(item){
+                    options += "<option value='" + item + "'>" + item + "</option>";    
+                });
+
+	        $("#music_list_select").html(options);
+		 
+             }
+   
+            });
+	    
+        });
+
+	  $("#music_play_button").click(function(){
+
+	      var playData = {
+		  "name": $("#music_list_select").val()
+	      };
+
+              $.ajax({
+                url: '/local/music/play',
+                dataType: 'json',
+                type: 'post',
+                contentType: 'application/json',
+	        data: JSON.stringify(playData),
+                success: function(data){
+  				 
+                }
+   
+              });
+	    
+          });
+
+	  $("#music_stop_button").click(function(){
+
+              $.ajax({
+                url: '/local/music/stop',
+                dataType: 'json',
+                type: 'post',
+                contentType: 'application/json',
+                success: function(data){
+  				 
+                }
+   
+              });
+	    
+          });
+
+	  $("#youtube_download_button").click(function(){
+
+	      var ytdlData = {
+		  "url": $("#youtube_url_input").val(),
+		  "name": $("#youtube_name_input").val()
+	      };
+
+              $.ajax({
+                url: '/local/music/ytdl',
+                dataType: 'json',
+                type: 'post',
+                contentType: 'application/json',
+		data: JSON.stringify(ytdlData),
+                success: function(data){
+  				 
+                }
+   
+              });
+	    
+          });
+
+	  $("#tts_speak_button").click(function(){
+
+	      var ttsData = {
+		  "message": $("#tts_message_field").val(),
+		  "pitch": $("#tts_message_pitch").val(),
+		  "volume": $("#tts_message_volume").val(),
+		  "speed": $("#tts_message_speed").val()
+	      };
+
+              $.ajax({
+                url: '/local/tts',
+                dataType: 'json',
+                type: 'post',
+                contentType: 'application/json',
+		data: JSON.stringify(ttsData),
+                success: function(data){
+  				 
+                }
+   
+              });
+	    
+         });
+	  
       });
 
     </script>
