@@ -1,0 +1,87 @@
+<!doctype html>
+
+<html>
+
+  <head>
+    <title>AudioBot Panel</title>
+     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  </head>
+
+  <body>
+
+    <h1>AudioBot Panel</h1>
+
+    <label for="password_field">Password:</label>
+    <input type="password" id="password_field">
+
+    <hr>
+
+    <h2>Music</h2>
+
+    <h3>Play Song</h3>
+
+    <button type="button">List Songs</button>
+    <br>
+    <br>
+
+    <select>
+
+    </select>
+    <br>
+    <br>
+    <button type="button">Play</button>
+
+    <h3>Stop Song</h3>
+
+    <button type="button">Stop</button>
+
+    
+    <h3>Download from YouTube</h3>
+    <label for="youtube_url_input">YouTube URL:</label>
+    <input type="text" id="youtube_url_input">
+
+    <br>
+
+    <label for="youtube_name_input">Save file as: (...).flv</label>
+    <input type="text" id="youtube_name_input">
+
+    <br>
+
+    <button type="button">Download</button>
+    
+    <hr>  
+      
+    <h2>Text-to-Speech</h2>
+    
+    <label for="tts_message_field">Message:</label>
+    <input type="text" id="tts_message_field">
+
+    <br>
+
+    <label for="tts_message_pitch">Pitch (0-99):</label>
+    <input type="text" id="tts_message_pitch" value="50">
+
+    <br>
+    
+    <label for="tts_message_volume">Volume (0-200):</label>
+    <input type="text" id="tts_message_volume" value="200">
+
+    <br>
+    
+    <label for="tts_message_speed">Speed (wpm):</label>
+    <input type="text" id="tts_message_speed" value="160">
+
+    <br>
+    <button type="button">Say It</button>
+ 
+    <script>
+
+      $(document).ready(function() {
+
+      });
+
+    </script>
+
+  </body>
+  
+</html>
