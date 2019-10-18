@@ -16,7 +16,7 @@
 
     <hr>
 
-    <h2>Music</h2>
+    <h2>Music/Sound Effects</h2>
 
     <h3>Play Song</h3>
 
@@ -31,7 +31,20 @@
     <br>
     <button id="music_play_button" type="button">Play</button>
 
-    <h3>Stop Song</h3>
+    <h3>Play SFX</h3>
+
+    <button id="sfx_list_button" type="button">List SFX</button>
+    <br>
+    <br>
+
+    <select id="sfx_list_select">
+
+    </select>
+    <br>
+    <br>
+    <button id="sfx_play_button" type="button">Play</button>
+
+    <h3>Stop Audio</h3>
 
     <button id="music_stop_button" type="button">Stop</button>
 
@@ -48,7 +61,7 @@
     <br>
 
     <button id="youtube_download_button" type="button">Download</button>
-    
+
     <hr>  
       
     <h2>Text-to-Speech</h2>
@@ -77,13 +90,26 @@
  
     <script>
 
+      var username = "test";
+
+      function make_base_auth(user, password) {
+        var tok = user + ':' + password;
+        var hash = btoa(tok);
+        return "Basic " + hash;
+      }
+      
       $(document).ready(function() {
-        $("#music_list_button").click(function(){
+          $("#music_list_button").click(function(){
+
+	  var password = $("#password_field").val();
 
           $.ajax({
              url: '/local/music/list',
              dataType: 'json',
              type: 'post',
+	     beforeSend: function (xhr) { 
+               xhr.setRequestHeader('Authorization', make_base_auth(username, password)); 
+             },
              contentType: 'application/json',
               success: function(data){
   		var options = "";  
@@ -99,7 +125,35 @@
 	    
         });
 
+	  $("#sfx_list_button").click(function(){
+
+	      var password = $("#password_field").val();
+
+          $.ajax({
+             url: '/local/clips/list',
+             dataType: 'json',
+              type: 'post',
+	      beforeSend: function (xhr) { 
+               xhr.setRequestHeader('Authorization', make_base_auth(username, password)); 
+             },
+             contentType: 'application/json',
+              success: function(data){
+  		var options = "";  
+                data.list.forEach(function(item){
+                    options += "<option value='" + item + "'>" + item + "</option>";    
+                });
+
+	        $("#sfx_list_select").html(options);
+		 
+             }
+   
+            });
+	    
+        });
+
 	  $("#music_play_button").click(function(){
+
+	      var password = $("#password_field").val();
 
 	      var playData = {
 		  "name": $("#music_list_select").val()
@@ -110,7 +164,35 @@
                 dataType: 'json',
                 type: 'post',
                 contentType: 'application/json',
-	        data: JSON.stringify(playData),
+	          data: JSON.stringify(playData),
+		  beforeSend: function (xhr) { 
+               xhr.setRequestHeader('Authorization', make_base_auth(username, password)); 
+             },
+                success: function(data){
+  				 
+                }
+   
+              });
+	    
+          });
+
+	  $("#sfx_play_button").click(function(){
+
+	      var password = $("#password_field").val();
+
+	      var playData = {
+		  "name": $("#sfx_list_select").val()
+	      };
+
+              $.ajax({
+                url: '/local/clips/play',
+                dataType: 'json',
+                type: 'post',
+                contentType: 'application/json',
+	          data: JSON.stringify(playData),
+		  beforeSend: function (xhr) { 
+               xhr.setRequestHeader('Authorization', make_base_auth(username, password)); 
+             },
                 success: function(data){
   				 
                 }
@@ -121,10 +203,15 @@
 
 	  $("#music_stop_button").click(function(){
 
+	      var password = $("#password_field").val();
+
               $.ajax({
                 url: '/local/music/stop',
                 dataType: 'json',
-                type: 'post',
+                  type: 'post',
+		  beforeSend: function (xhr) { 
+               xhr.setRequestHeader('Authorization', make_base_auth(username, password)); 
+             },
                 contentType: 'application/json',
                 success: function(data){
   				 
@@ -135,6 +222,8 @@
           });
 
 	  $("#youtube_download_button").click(function(){
+
+	      var password = $("#password_field").val();
 
 	      var ytdlData = {
 		  "url": $("#youtube_url_input").val(),
@@ -157,6 +246,8 @@
 
 	  $("#tts_speak_button").click(function(){
 
+	      var password = $("#password_field").val();
+
 	      var ttsData = {
 		  "message": $("#tts_message_field").val(),
 		  "pitch": $("#tts_message_pitch").val(),
@@ -169,7 +260,10 @@
                 dataType: 'json',
                 type: 'post',
                 contentType: 'application/json',
-		data: JSON.stringify(ttsData),
+		  data: JSON.stringify(ttsData),
+		  beforeSend: function (xhr) { 
+               xhr.setRequestHeader('Authorization', make_base_auth(username, password)); 
+             },
                 success: function(data){
   				 
                 }

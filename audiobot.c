@@ -14,15 +14,21 @@
 #define IPADDR "127.0.0.1"
 #define PORT 7437
 
+#define USER "test"
+#define PASSWORD "testpassword"
+
 #define STATIC_FOLDER "static"
 
 #define MUSICDIR "/home/jmyers/Desktop/songs/"
-#define CLIPDIR "/home/jmyers/Desktop/clips/"
+#define CLIPSDIR "/home/jmyers/Desktop/clips/"
 
 #define MUSICLISTROUTE "/local/music/list"
 #define MUSICYTDLROUTE "/local/music/ytdl"
 #define MUSICPLAYROUTE "/local/music/play"
 #define MUSICSTOPROUTE "/local/music/stop"
+
+#define CLIPSLISTROUTE "/local/clips/list"
+#define CLIPSPLAYROUTE "/local/clips/play"
 
 #define TTSROUTE "/local/tts"
 
@@ -34,39 +40,20 @@ int callback_play_music (const struct _u_request * request, struct _u_response *
 int callback_stop_music (const struct _u_request * request, struct _u_response * response, void * user_data);
 
 int callback_list_clips (const struct _u_request * request, struct _u_response * response, void * user_data);
+int callback_play_clips (const struct _u_request * request, struct _u_response * response, void * user_data);
 
 int callback_play_tts (const struct _u_request * request, struct _u_response * response, void * user_data);
 
-/**
- * decode a u_map into a string
- */
-char * print_map(const struct _u_map * map) {
-  char * line, * to_return = NULL;
-  const char **keys, * value;
-  int len, i;
-  if (map != NULL) {
-    keys = u_map_enum_keys(map);
-    for (i=0; keys[i] != NULL; i++) {
-      value = u_map_get(map, keys[i]);
-      len = snprintf(NULL, 0, "key is %s, length is %zu, value is %.*s", keys[i], u_map_get_length(map, keys[i]), (int)u_map_get_length(map, keys[i]), value);
-      line = o_malloc((len+1)*sizeof(char));
-      snprintf(line, (len+1), "key is %s, length is %zu, value is %.*s", keys[i], u_map_get_length(map, keys[i]), (int)u_map_get_length(map, keys[i]), value);
-      if (to_return != NULL) {
-        len = o_strlen(to_return) + o_strlen(line) + 1;
-        to_return = o_realloc(to_return, (len+1)*sizeof(char));
-        if (o_strlen(to_return) > 0) {
-          strcat(to_return, "\n");
-        }
-      } else {
-        to_return = o_malloc((o_strlen(line) + 1)*sizeof(char));
-        to_return[0] = 0;
-      }
-      strcat(to_return, line);
-      o_free(line);
-    }
-    return to_return;
+int callback_auth_basic_body (const struct _u_request * request, struct _u_response * response, void * user_data) {
+  y_log_message(Y_LOG_LEVEL_DEBUG, "basic auth user: %s", request->auth_basic_user);
+  y_log_message(Y_LOG_LEVEL_DEBUG, "basic auth password: %s", request->auth_basic_password);
+  y_log_message(Y_LOG_LEVEL_DEBUG, "basic auth param: %s", (char *)user_data);
+  if (request->auth_basic_user != NULL && request->auth_basic_password != NULL && 
+      0 == o_strcmp(request->auth_basic_user, USER) && 0 == o_strcmp(request->auth_basic_password, PASSWORD)) {
+    return U_CALLBACK_CONTINUE;
   } else {
-    return NULL;
+    ulfius_set_string_body_response(response, 401, "Auth error");
+    return U_CALLBACK_UNAUTHORIZED;
   }
 }
 
@@ -112,13 +99,18 @@ int main (int argc, char **argv) {
   
   
   // Endpoint list declaration
+  ulfius_add_endpoint_by_val(&instance, "POST", "*", NULL, 0, &callback_auth_basic_body, "auth param");
+  
   ulfius_add_endpoint_by_val(&instance, "POST", MUSICPLAYROUTE, NULL, 1, &callback_play_music, &nb_audiobot);
   ulfius_add_endpoint_by_val(&instance, "POST", MUSICSTOPROUTE, NULL, 1, &callback_stop_music, &nb_audiobot);
   ulfius_add_endpoint_by_val(&instance, "POST", MUSICYTDLROUTE, NULL, 1, &callback_ytdl_music, &nb_audiobot);
   ulfius_add_endpoint_by_val(&instance, "POST", MUSICLISTROUTE, NULL, 1, &callback_list_music, &nb_audiobot);
- 
-  ulfius_add_endpoint_by_val(&instance, "POST", TTSROUTE, NULL, 1, &callback_play_tts, &nb_audiobot);
 
+  ulfius_add_endpoint_by_val(&instance, "POST", CLIPSLISTROUTE, NULL, 1, &callback_list_clips, &nb_audiobot);
+  ulfius_add_endpoint_by_val(&instance, "POST", CLIPSPLAYROUTE, NULL, 1, &callback_play_clips, &nb_audiobot);
+
+  ulfius_add_endpoint_by_val(&instance, "POST", TTSROUTE, NULL, 1, &callback_play_tts, &nb_audiobot);
+  
   ulfius_add_endpoint_by_val(&instance, "GET", "*", NULL, 1, &callback_static_file, &mime_types);
   
   // Start the framework
@@ -168,6 +160,32 @@ int callback_play_tts (const struct _u_request * request, struct _u_response * r
   return U_CALLBACK_CONTINUE;
 }
 
+void play_vlc(char * dir_name, char * file_name) {
+
+  char buffer[256];
+  if(snprintf(buffer, sizeof(buffer), "cvlc --no-video --play-and-exit \"file://%s%s\"", dir_name, file_name)>=sizeof(buffer))
+  {
+    return;
+  }
+  else
+  {
+    system(buffer);
+  } 
+  
+}
+
+int callback_play_clips (const struct _u_request * request, struct _u_response * response, void * user_data) {
+
+  json_t * json_nb_audiobot = ulfius_get_json_body_request(request, NULL);
+  json_t * json_response = NULL;
+  
+  char * clip_param_name = json_string_value(json_object_get(json_nb_audiobot, "name"));
+  
+  play_vlc(CLIPSDIR, clip_param_name);
+ 
+  return U_CALLBACK_CONTINUE;
+}
+
 int callback_play_music (const struct _u_request * request, struct _u_response * response, void * user_data) {
 
   json_t * json_nb_audiobot = ulfius_get_json_body_request(request, NULL);
@@ -175,15 +193,7 @@ int callback_play_music (const struct _u_request * request, struct _u_response *
   
   char * music_param_song = json_string_value(json_object_get(json_nb_audiobot, "name"));
   
-  char buffer[256];
-  if(snprintf(buffer, sizeof(buffer), "cvlc --no-video --play-and-exit \"file://%s%s\"", MUSICDIR, music_param_song)>=sizeof(buffer))
-  {
-    return U_CALLBACK_CONTINUE;
-  }
-  else
-  {
-    system(buffer);
-  } 
+  play_vlc(MUSICDIR, music_param_song);
  
   return U_CALLBACK_CONTINUE;
 }
@@ -220,20 +230,11 @@ int callback_ytdl_music (const struct _u_request * request, struct _u_response *
   return U_CALLBACK_CONTINUE;
 }
 
-int callback_list_music (const struct _u_request * request, struct _u_response * response, void * user_data) {
-
-  /*
-  json_t * json_nb_audiobot = ulfius_get_json_body_request(request, NULL);
-  
-  char * auth_param_password = json_string_value(json_object_get(json_nb_audiobot, "pwd"));
-  */
-  json_t * json_response = NULL;
-  json_t * music_array = json_array();
-  
+void array_directory_list(json_t * results, char * dir_name) {
   DIR * music_dir;
   struct dirent * dir;
 
-  music_dir = opendir(MUSICDIR);
+  music_dir = opendir(dir_name);
 
   if(music_dir) {
 
@@ -242,7 +243,7 @@ int callback_list_music (const struct _u_request * request, struct _u_response *
       char * file_name = dir->d_name;
 
       if(file_name[0] != '.') {
-	json_array_append(music_array, json_string(file_name));
+	json_array_append(results, json_string(file_name));
       }
       
     }
@@ -250,9 +251,30 @@ int callback_list_music (const struct _u_request * request, struct _u_response *
     closedir(music_dir);
 
   }
+}
+
+int callback_list_music (const struct _u_request * request, struct _u_response * response, void * user_data) {
+  json_t * json_response = NULL;
+  json_t * music_array = json_array();
+  
+  array_directory_list(music_array, MUSICDIR);
 
   json_response = json_object();
   json_object_set_new(json_response, "list", music_array);
+  ulfius_set_json_body_response(response, 200, json_response);
+  json_decref(json_response);
+  
+  return U_CALLBACK_CONTINUE;
+}
+
+int callback_list_clips (const struct _u_request * request, struct _u_response * response, void * user_data) {
+  json_t * json_response = NULL;
+  json_t * clips_array = json_array();
+  
+  array_directory_list(clips_array, CLIPSDIR);
+
+  json_response = json_object();
+  json_object_set_new(json_response, "list", clips_array);
   ulfius_set_json_body_response(response, 200, json_response);
   json_decref(json_response);
   
