@@ -24,8 +24,6 @@
 #define MUSICPLAYROUTE "/local/music/play"
 #define MUSICSTOPROUTE "/local/music/stop"
 
-#define CLIPUPLOADROUTE "/local/clip/upload"
-
 #define TTSROUTE "/local/tts"
 
 int callback_static_file (const struct _u_request * request, struct _u_response * response, void * user_data);
@@ -35,19 +33,9 @@ int callback_ytdl_music (const struct _u_request * request, struct _u_response *
 int callback_play_music (const struct _u_request * request, struct _u_response * response, void * user_data);
 int callback_stop_music (const struct _u_request * request, struct _u_response * response, void * user_data);
 
+int callback_list_clips (const struct _u_request * request, struct _u_response * response, void * user_data);
+
 int callback_play_tts (const struct _u_request * request, struct _u_response * response, void * user_data);
-
-int callback_upload_file (const struct _u_request * request, struct _u_response * response, void * user_data);
-
-int file_upload_callback (const struct _u_request * request,
-                          const char * key,
-                          const char * filename,
-                          const char * content_type,
-                          const char * transfer_encoding,
-                          const char * data,
-                          uint64_t off,
-                          size_t size,
-			  void * user_data);
 
 /**
  * decode a u_map into a string
@@ -110,12 +98,7 @@ int main (int argc, char **argv) {
     return(1);
   }
 
-  instance.max_post_param_size = 500*1024;
-  
-  if (ulfius_set_upload_file_callback_function(&instance, &file_upload_callback, "my cls") != U_OK) {
-        printf("Upload callback failure");
-    y_log_message(Y_LOG_LEVEL_ERROR, "Error ulfius_set_upload_file_callback_function");
-  }
+  instance.max_post_param_size = 5120 * 1024;
 
   struct _u_map mime_types;
   u_map_init(&mime_types);
@@ -133,9 +116,7 @@ int main (int argc, char **argv) {
   ulfius_add_endpoint_by_val(&instance, "POST", MUSICSTOPROUTE, NULL, 1, &callback_stop_music, &nb_audiobot);
   ulfius_add_endpoint_by_val(&instance, "POST", MUSICYTDLROUTE, NULL, 1, &callback_ytdl_music, &nb_audiobot);
   ulfius_add_endpoint_by_val(&instance, "POST", MUSICLISTROUTE, NULL, 1, &callback_list_music, &nb_audiobot);
-
-  ulfius_add_endpoint_by_val(&instance, "*", CLIPUPLOADROUTE, NULL, 1, &callback_upload_file, NULL);
-  
+ 
   ulfius_add_endpoint_by_val(&instance, "POST", TTSROUTE, NULL, 1, &callback_play_tts, &nb_audiobot);
 
   ulfius_add_endpoint_by_val(&instance, "GET", "*", NULL, 1, &callback_static_file, &mime_types);
@@ -318,53 +299,4 @@ int callback_static_file (const struct _u_request * request, struct _u_response 
   }
   o_free(file_path);
   return U_CALLBACK_CONTINUE;
-}
-
-char* concat(const char *s1, const char *s2)
-{
-    char *result = malloc(strlen(s1) + strlen(s2) + 1); // +1 for the null-terminator
-    // in real code you would check for errors in malloc here
-    strcpy(result, s1);
-    strcat(result, s2);
-    return result;
-}
-
-/**
- * upload a file
- */
-int callback_upload_file (const struct _u_request * request, struct _u_response * response, void * user_data) {
-  char * url_params = print_map(request->map_url), * headers = print_map(request->map_header), * cookies = print_map(request->map_cookie), 
-        * post_params = print_map(request->map_post_body);
-
-  char * string_body = msprintf("Upload file\n\n  method is %s\n  url is %s\n\n  parameters from the url are \n%s\n\n  cookies are \n%s\n\n  headers are \n%s\n\n  post parameters are \n%s\n\n",
-                                  request->http_verb, request->http_url, url_params, cookies, headers, post_params);
-  ulfius_set_string_body_response(response, 200, string_body);
-  o_free(url_params);
-  o_free(headers);
-  o_free(cookies);
-  o_free(post_params);
-  o_free(string_body);
-  return U_CALLBACK_CONTINUE;
-}
-
-/**
- * File upload callback function
- */
-int file_upload_callback (const struct _u_request * request, 
-                          const char * key, 
-                          const char * filename, 
-                          const char * content_type, 
-                          const char * transfer_encoding, 
-                          const char * data, 
-                          uint64_t off, 
-                          size_t size, 
-                          void * cls) {
-  y_log_message(Y_LOG_LEVEL_DEBUG, "Got from file '%s' of the key '%s', offset %llu, size %zu, cls is '%s'", filename, key, off, size, cls);
-  
-  FILE * file;
-
-  file = fopen(concat(CLIPDIR, filename), "a");
-  fwrite(data, size, 1, file);
-  fclose(file);
-  return U_OK;
 }
